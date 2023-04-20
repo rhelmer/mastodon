@@ -155,8 +155,16 @@ module CacheConcern
     end
   end
 
+  class_methods do
+    def vary_by(value)
+      before_action do |controller|
+        response.headers['Vary'] = value.respond_to?(:call) ? controller.instance_exec(&value) : value
+      end
+    end
+  end
+
   def render_with_cache(**options)
-    raise ArgumentError, 'only JSON render calls are supported' unless options.key?(:json) || block_given?
+    raise ArgumentError, 'Only JSON render calls are supported' unless options.key?(:json) || block_given?
 
     key        = options.delete(:key) || [[params[:controller], params[:action]].join('/'), options[:json].respond_to?(:cache_key) ? options[:json].cache_key : nil, options[:fields].nil? ? nil : options[:fields].join(',')].compact.join(':')
     expires_in = options.delete(:expires_in) || 3.minutes
@@ -176,10 +184,6 @@ module CacheConcern
     end
   end
 
-  def set_cache_headers
-    response.headers['Vary'] = public_fetch_mode? ? 'Accept' : 'Accept, Signature'
-  end
-
   def cache_collection(raw, klass)
     return raw unless klass.respond_to?(:with_includes)
 
@@ -187,7 +191,7 @@ module CacheConcern
     return [] if raw.empty?
 
     cached_keys_with_value = begin
-      Rails.cache.read_multi(*raw, namespace: 'v2').transform_keys(&:id).transform_values { |r| ActiveRecordCoder.load(r) }
+      Rails.cache.read_multi(*raw).transform_keys(&:id).transform_values { |r| ActiveRecordCoder.load(r) }
     rescue ActiveRecordCoder::Error
       {} # The serialization format may have changed, let's pretend it's a cache miss.
     end
@@ -200,7 +204,7 @@ module CacheConcern
       uncached = klass.where(id: uncached_ids).with_includes.index_by(&:id)
 
       uncached.each_value do |item|
-        Rails.cache.write(item, ActiveRecordCoder.dump(item), namespace: 'v2')
+        Rails.cache.write(item, ActiveRecordCoder.dump(item))
       end
     end
 

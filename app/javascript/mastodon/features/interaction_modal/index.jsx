@@ -74,7 +74,6 @@ class Copypaste extends React.PureComponent {
 
 }
 
-export default @connect(mapStateToProps, mapDispatchToProps)
 class InteractionModal extends React.PureComponent {
 
   static propTypes = {
@@ -160,3 +159,5 @@ class InteractionModal extends React.PureComponent {
   }
 
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(InteractionModal);
